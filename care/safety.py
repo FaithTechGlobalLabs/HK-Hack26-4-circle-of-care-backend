@@ -50,6 +50,15 @@ def crisis_note(language: str) -> str:
     return _CRISIS_NOTE["zh" if language == "zh" else "en"]
 
 
+def detect_language(text: str) -> str | None:
+    """"zh" if the message has Chinese characters, "en" if it has Latin letters, None if neither
+    (an emoji, a number), so the conversation can keep the language it was using."""
+    if re.search(r"[\u4e00-\u9fff]", text or ""):
+        return "zh"
+    if re.search(r"[A-Za-z]", text or ""):
+        return "en"
+    return None
+
+
 def guess_language(text: str) -> str:
-    """Cheap guess used before the AI has answered (or if it fails)."""
-    return "zh" if re.search(r"[一-鿿]", text or "") else "en"
+    return detect_language(text) or "en"

@@ -43,8 +43,10 @@ def fake_agent(monkeypatch):
     """Replace the Claude call with a queue of canned answers."""
     answers = []
 
-    def respond(history, case_so_far, consent, crisis_hint=False):
-        respond.calls.append({"history": history, "case": case_so_far, "consent": consent, "crisis": crisis_hint})
+    def respond(history, case_so_far, consent, crisis_hint=False, **context):
+        respond.calls.append(
+            {"history": history, "case": case_so_far, "consent": consent, "crisis": crisis_hint, **context}
+        )
         answer = answers.pop(0)
         if isinstance(answer, Exception):
             raise answer
@@ -453,3 +455,52 @@ def test_api_post_needs_passcode(open_request, client, settings):
     url = reverse("api_post", args=[open_request.pk])
     assert client.get(url).status_code == 401
     assert client.get(url, headers={"X-Board-Passcode": "grace"}).status_code == 200
+
+
+# ---------- language ----------
+
+
+@pytest.mark.parametrize("text,expected", [("yes", "en"), ("可以", "zh"), ("👍", None), ("3", None), ("ok 好", "zh")])
+def test_detect_language(text, expected):
+    assert safety.detect_language(text) == expected
+
+
+def test_reply_language_follows_the_person_not_the_ai(seeded, fake_agent):
+    answers, respond = fake_agent
+    # The AI wrongly answers in Chinese to an English "yes"; the reply extras must still be English.
+    answers.extend([make_result(), make_result(language="zh")])
+    service.handle_incoming("simulator", "sim:lang", "new request")
+    service.handle_incoming("simulator", "sim:lang", "I need dinners in Tsuen Wan")
+    reply, conversation = service.handle_incoming("simulator", "sim:lang", "Yes")
+    assert respond.calls[-1]["language"] == "en"
+    assert conversation.language == "en"
+    assert "Short-term Food Assistance" in reply or "2343 2255" not in reply  # English names, not 短期食物援助
+
+
+def test_emoji_keeps_the_conversation_language(seeded, fake_agent):
+    answers, respond = fake_agent
+    answers.extend([make_result(language="zh"), make_result(language="zh")])
+    service.handle_incoming("simulator", "sim:emoji", "我需要食物")
+    service.handle_incoming("simulator", "sim:emoji", "👍")
+    assert respond.calls[-1]["language"] == "zh"
+
+
+def test_previous_bot_message_is_kept_after_new_request():
+    messages = agent.build_messages(
+        [("assistant", "Sure, let's start a new one."), ("user", "Yes")], {}, "unknown", False, language="en"
+    )
+    assert messages[0] == {"role": "user", "content": "Yes"}
+    assert "Your previous message to them: Sure, let's start a new one." in messages[-1]["content"]
+    assert messages[-1]["content"].endswith("Reply in English.")
+
+
+def test_ai_sees_earlier_requests_and_time_gap(seeded, fake_agent):
+    answers, respond = fake_agent
+    answers.extend([make_result(consent="yes"), make_result(new_request=True, case={"category": "medical"}),
+                    make_result(case={"category": "medical"})])
+    service.handle_incoming("simulator", "sim:ctx", "need dinners")
+    service.handle_incoming("simulator", "sim:ctx", "also a lift to hospital")
+    service.handle_incoming("simulator", "sim:ctx", "on Tuesday")
+    last = respond.calls[-1]
+    assert [r["category"] for r in last["earlier_requests"]] == ["food"]
+    assert last["hours_since_previous"] is not None and last["hours_since_previous"] < 1

@@ -42,13 +42,16 @@ def handle_incoming(channel: str, address: str, text: str) -> tuple[str, Convers
         conversation, _ = Conversation.objects.get_or_create(
             address=address, defaults={"channel": channel, "language": safety.guess_language(text)}
         )
+        previous_message_at = conversation.last_user_message_at
+        # Reply in the language they just wrote in; an emoji or number keeps the current one.
+        language = safety.detect_language(text) or conversation.language
+        conversation.language = language
         conversation.last_user_message_at = timezone.now()
-        conversation.save(update_fields=["last_user_message_at"])
+        conversation.save(update_fields=["language", "last_user_message_at"])
         Message.objects.create(conversation=conversation, role=Message.Role.USER, text=text)
 
     if is_new_request(text):
         conversation.start_new_request()
-        language = safety.guess_language(text)
         reply = _ask_consent_once(conversation, NEW_REQUEST_REPLY[language], language, crisis=False)
         Message.objects.create(conversation=conversation, role=Message.Role.ASSISTANT, text=reply)
         return reply, conversation
@@ -68,15 +71,18 @@ def handle_incoming(channel: str, address: str, text: str) -> tuple[str, Convers
             case_so_far=_case_snapshot(request),
             consent=conversation.consent,
             crisis_hint=keyword_crisis,
+            language=language,
+            earlier_requests=_earlier_requests(conversation, request),
+            hours_since_previous=_hours_since(previous_message_at),
         )
     except agent.AgentError as exc:
         log.warning("AI unavailable for conversation %s: %s", conversation.pk, exc)
         result = None
 
     if result:
+        result.language = language
         reply = _apply_result(conversation, request, result, keyword_crisis)
     else:
-        language = conversation.language
         slugs = safety.CRISIS_SLUGS if keyword_crisis else []
         reply = _compose(FALLBACK_REPLY.get(language, FALLBACK_REPLY["en"]), slugs, language, keyword_crisis)
         reply = _ask_consent_once(conversation, reply, language, keyword_crisis)
@@ -95,6 +101,26 @@ def is_new_request(text: str) -> bool:
 def _history(conversation):
     recent = conversation.current_messages().order_by("-created_at", "-pk")[:HISTORY_LIMIT]
     return [(m.role, m.text) for m in reversed(recent)]
+
+
+def _earlier_requests(conversation, current: CareRequest | None) -> list[dict]:
+    """Short notes on their other requests, so the AI can tell a new need from more detail."""
+    earlier = conversation.requests.exclude(pk=current.pk if current else None).order_by("-created_at")[:5]
+    return [
+        {
+            "ref": r.ref,
+            "kind": r.kind,
+            "category": r.category or "unclear",
+            "status": r.get_status_display(),
+            "summary": r.summary,
+            "hours_ago": round((timezone.now() - r.created_at).total_seconds() / 3600, 1),
+        }
+        for r in earlier
+    ]
+
+
+def _hours_since(moment) -> float | None:
+    return (timezone.now() - moment).total_seconds() / 3600 if moment else None
 
 
 def _case_snapshot(request: CareRequest | None) -> dict:
@@ -128,9 +154,8 @@ def _apply_result(conversation, request, result: agent.AgentResult, keyword_cris
     elif result.consent in ("yes", "no"):
         conversation.consent = result.consent
 
-    conversation.language = result.language
     conversation.crisis_flagged = conversation.crisis_flagged or crisis
-    conversation.save(update_fields=["language", "consent", "crisis_flagged"])
+    conversation.save(update_fields=["consent", "crisis_flagged"])
 
     case = result.case
     has_content = case["kind"] != "unclear" or case["category"] != "unclear" or case["needs"]

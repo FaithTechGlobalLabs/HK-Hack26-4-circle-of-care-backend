@@ -10,7 +10,6 @@ from django.conf import settings
 from resources.models import Category, Resource
 
 from .models import Household, Need
-from .safety import guess_language
 
 log = logging.getLogger("care")
 
@@ -29,8 +28,8 @@ Each turn you do three things.
 
 1. Reply to the person.
 - Warm, calm and short: under 100 words, WhatsApp style, short paragraphs. No headings, no markdown, no lists.
-- Reply in the language they write in. If they write Chinese or Cantonese, reply in natural written Cantonese \
-using Traditional Chinese, and set language to "zh". Otherwise reply in English and set language to "en".
+- Reply in the language named in the latest system note; it follows the language the person writes in. For \
+Chinese, write natural Cantonese in Traditional Chinese and set language to "zh"; for English set "en".
 - If their message is only a greeting, or you can't yet tell why they are writing, welcome them to Circle of Care \
 in a sentence or two and ask whether they need some help, or have something they would like to offer.
 - If they need help: over the conversation, gently learn what is going on, which district they are near, who is \
@@ -78,8 +77,12 @@ ask about sharing yourself. Set consent to "yes" or "no" when they answer it, ev
 you were given.
 - new_request: true when the latest message is about a different need or offer from the case record so far \
 (for example, after asking for meals they now need a ride to hospital). The system then keeps the earlier \
-request and opens a separate one, so fill case for the new need only. Otherwise false. Never true when the \
-case record so far is empty.
+request and opens a separate one, so fill case for the new need only, and say in your reply that you've \
+started a new request for it (never that you added it to the earlier one). Extra detail about the same need is \
+not new. The note lists their earlier requests and how long it has been since their previous message: a long \
+gap, or an earlier request that is already on the board, makes a different need more likely to be new. If you \
+really can't tell whether they mean the current request or something new, ask one short question and keep \
+new_request false. Never true when the case record so far is empty.
 
 Safety comes first. If there is any sign of suicide or self-harm, violence or abuse, or a medical emergency, set \
 crisis to true. Tell them to call 999 if anyone is in danger right now, include "18111" and "sbhk" in \
@@ -164,36 +167,67 @@ def build_system_prompt() -> str:
     return SYSTEM_PROMPT + catalog
 
 
-def build_messages(history: list[tuple[str, str]], case_so_far: dict, consent: str, crisis_hint: bool):
+LANGUAGE_NAMES = {"en": "English", "zh": "Traditional Chinese (written Cantonese)"}
+
+
+def build_messages(
+    history: list[tuple[str, str]],
+    case_so_far: dict,
+    consent: str,
+    crisis_hint: bool,
+    language: str = "en",
+    earlier_requests: list[dict] | None = None,
+    hours_since_previous: float | None = None,
+):
     """history is [(role, text), ...] oldest first. Consecutive messages from the same side are joined,
     because the APIs need user and assistant turns to alternate. Ends with a system note carrying the
-    case so far, so the long system prompt stays identical (and cached) between turns."""
+    case so far and the reply language, so the long system prompt stays identical (and cached)."""
     messages = []
     for role, text in history:
         if messages and messages[-1]["role"] == role:
             messages[-1]["content"] += "\n" + text
         else:
             messages.append({"role": role, "content": text})
+    # The APIs need a user message first; keep what we said before it (e.g. after "new request") as context.
+    said_before = []
     while messages and messages[0]["role"] != "user":
-        messages.pop(0)
+        said_before.append(messages.pop(0)["content"])
 
-    note = (
-        f"Case record so far: {json.dumps(case_so_far, ensure_ascii=False)}\n"
-        f"Consent so far: {consent}"
-    )
+    lines = []
+    if said_before:
+        lines.append("Your previous message to them: " + "\n".join(said_before))
+    lines += [
+        f"Case record so far: {json.dumps(case_so_far, ensure_ascii=False)}",
+        f"Consent so far: {consent}",
+    ]
+    if earlier_requests:
+        lines.append(f"Their earlier requests: {json.dumps(earlier_requests, ensure_ascii=False)}")
+    if hours_since_previous is not None:
+        lines.append(f"Hours since their previous message: {hours_since_previous:.1f}")
     if not any(role == "assistant" for role, _ in history):
-        note += "\nThis is their first message to Circle of Care."
+        lines.append("This is their first message to Circle of Care.")
     if crisis_hint:
-        note += "\nA keyword check flagged the latest message as a possible crisis."
-    messages.append({"role": "system", "content": note})
+        lines.append("A keyword check flagged the latest message as a possible crisis.")
+    lines.append(f"Reply in {LANGUAGE_NAMES.get(language, 'English')}.")
+    messages.append({"role": "system", "content": "\n".join(lines)})
     return messages
 
 
-def respond(history, case_so_far: dict, consent: str, crisis_hint: bool = False) -> AgentResult:
+def respond(
+    history,
+    case_so_far: dict,
+    consent: str,
+    crisis_hint: bool = False,
+    language: str = "en",
+    earlier_requests: list[dict] | None = None,
+    hours_since_previous: float | None = None,
+) -> AgentResult:
     system = build_system_prompt()
-    messages = build_messages(history, case_so_far, consent, crisis_hint)
+    messages = build_messages(
+        history, case_so_far, consent, crisis_hint, language, earlier_requests, hours_since_previous
+    )
     ask = _ask_claude if settings.LLM_PROVIDER == "anthropic" else _ask_deepseek
-    fallback_language = guess_language(history[-1][1] if history else "")
+    fallback_language = language
     # One retry: DeepSeek's JSON mode occasionally returns only whitespace.
     for attempt in range(2):
         raw = ask(system, messages)
