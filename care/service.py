@@ -174,14 +174,15 @@ def _apply_result(conversation, request, result: agent.AgentResult, keyword_cris
         request.helpers_wanted = min(max(case["helpers_wanted"], 1), 20)
 
         # Shown on the board only once the person has agreed to share and we know enough.
-        # Crisis conversations stay off the board for coordinators to handle.
+        # Nothing is posted while a message looks like a crisis. The crisis flag on the conversation
+        # stays set for coordinators, but a later calm message (e.g. "that was a joke") can post.
         agreed = conversation.consent == Conversation.Consent.YES
-        if agreed and case["ready"] and not conversation.crisis_flagged:
+        if agreed and case["ready"] and not crisis:
             if request.status == CareRequest.Status.DRAFT:
                 request.status = CareRequest.Status.OPEN
             request.shared = True
             request.share_contact = True
-        elif not agreed or conversation.crisis_flagged:
+        elif not agreed:
             request.shared = False
             if request.status == CareRequest.Status.OPEN:
                 request.status = CareRequest.Status.DRAFT

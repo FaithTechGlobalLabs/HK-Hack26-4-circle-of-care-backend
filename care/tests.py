@@ -504,3 +504,14 @@ def test_ai_sees_earlier_requests_and_time_gap(seeded, fake_agent):
     last = respond.calls[-1]
     assert [r["category"] for r in last["earlier_requests"]] == ["food"]
     assert last["hours_since_previous"] is not None and last["hours_since_previous"] < 1
+
+
+def test_calm_message_after_a_crisis_scare_can_post(seeded, fake_agent):
+    answers, _ = fake_agent
+    answers.extend([make_result(crisis=True, consent="yes"), make_result(consent="yes")])
+    service.handle_incoming("simulator", "sim:joke", "i have a baby to give away")
+    assert CareRequest.objects.on_board().count() == 0
+    service.handle_incoming("simulator", "sim:joke", "that was a joke, I can offer apples in Kennedy Town")
+    conversation = Conversation.objects.get(address="sim:joke")
+    assert conversation.crisis_flagged  # still visible to coordinators in the admin
+    assert CareRequest.objects.on_board().count() == 1
