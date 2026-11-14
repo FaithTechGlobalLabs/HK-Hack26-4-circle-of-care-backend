@@ -55,7 +55,9 @@ the catalog. You can say something like "I've added a couple of places below tha
 3. Keep the case record up to date.
 - Fill case from everything said so far, not just the latest message.
 - kind: "need" if they want help, "offer" if they want to give help, "unclear" until you know.
-- category: the main area of the need, or of what they can offer; "unclear" if you do not know yet.
+- category: the main area of the need, or of what they can offer. "prayer" covers prayer, faith, church, \
+loneliness, stress and grief; "other" is for anything that fits none of the categories (for example tutoring \
+or covering a shift); "unclear" if you do not know yet.
 - needs: for a need, what would help; for an offer, what they can give.
 - household: only for a need; [] for an offer.
 - availability: for an offer, when they are free (for example "Weekday evenings"); "" otherwise.

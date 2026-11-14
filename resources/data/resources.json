@@ -362,7 +362,7 @@
   },
   {
     "slug": "prayer",
-    "category": "spiritual",
+    "category": "prayer",
     "provider_type": "church",
     "is_sample": true,
     "name": "Prayer line",
@@ -381,7 +381,7 @@
   },
   {
     "slug": "chaplain",
-    "category": "spiritual",
+    "category": "prayer",
     "provider_type": "ngo",
     "is_sample": false,
     "name": "Hospital chaplains",
@@ -400,7 +400,7 @@
   },
   {
     "slug": "find-church",
-    "category": "spiritual",
+    "category": "prayer",
     "provider_type": "church",
     "is_sample": true,
     "name": "Find a church near you",
@@ -419,7 +419,7 @@
   },
   {
     "slug": "18111",
-    "category": "heart",
+    "category": "prayer",
     "provider_type": "gov",
     "is_sample": false,
     "name": "Mental Health Support Hotline",
@@ -438,7 +438,7 @@
   },
   {
     "slug": "sbhk",
-    "category": "heart",
+    "category": "prayer",
     "provider_type": "ngo",
     "is_sample": false,
     "name": "Samaritan Befrienders Hong Kong",
@@ -457,7 +457,7 @@
   },
   {
     "slug": "samaritans",
-    "category": "heart",
+    "category": "prayer",
     "provider_type": "ngo",
     "is_sample": false,
     "name": "The Samaritans",
@@ -476,7 +476,7 @@
   },
   {
     "slug": "swt",
-    "category": "heart",
+    "category": "prayer",
     "provider_type": "gov",
     "is_sample": false,
     "name": "Shall We Talk",
@@ -495,7 +495,7 @@
   },
   {
     "slug": "listen",
-    "category": "heart",
+    "category": "prayer",
     "provider_type": "church",
     "is_sample": true,
     "name": "Coffee and a listening ear",
@@ -590,7 +590,7 @@
   },
   {
     "slug": "carers-circle",
-    "category": "heart",
+    "category": "prayer",
     "provider_type": "church",
     "is_sample": true,
     "name": "Carers’ coffee circle",
@@ -647,7 +647,7 @@
   },
   {
     "slug": "newcomer-welcome",
-    "category": "spiritual",
+    "category": "prayer",
     "provider_type": "church",
     "is_sample": true,
     "name": "Newcomers’ welcome lunch",

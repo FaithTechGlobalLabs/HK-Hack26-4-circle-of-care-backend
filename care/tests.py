@@ -144,7 +144,7 @@ def test_crisis_conversations_stay_off_the_board(seeded, fake_agent):
 
 def test_crisis_adds_999_and_hotlines_even_if_ai_forgets(seeded, fake_agent):
     answers, respond = fake_agent
-    answers.append(make_result(resource_slugs=[], case={"category": "heart", "needs": ["listening"]}))
+    answers.append(make_result(resource_slugs=[], case={"category": "prayer", "needs": ["listening"]}))
 
     reply, conversation = service.handle_incoming("simulator", "sim:d", "I want to die")
 

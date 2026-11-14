@@ -6,8 +6,8 @@ class Category(models.TextChoices):
     FOOD = "food", "Food"
     MEDICAL = "medical", "Medical"
     SOCIAL = "social", "Social"
-    SPIRITUAL = "spiritual", "Spiritual"
-    HEART = "heart", "Heart"
+    PRAYER = "prayer", "Prayer"
+    OTHER = "other", "Other"
 
 
 class ProviderType(models.TextChoices):

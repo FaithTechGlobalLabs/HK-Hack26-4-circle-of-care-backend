@@ -3,8 +3,8 @@
   --bg: #F5F7F9; --surface: #FFFFFF; --ink: #1B2430; --muted: #5B6573; --line: #E1E6EB; --rule: #C3CBD4; --soft: #EEF2F5;
   --primary: #0E7A63; --primary-ink: #FFFFFF; --primary-soft: #DDF1EB;
   --bar: #FFF4C2; --bar-ink: #3D3000; --yellow: #FFD84D; --danger: #B5162F; --danger-soft: #FBE1E4;
-  --housing: #1F5FBF; --food: #A55A00; --medical: #B5162F; --social: #0B7A57; --spiritual: #6B3FA0; --heart: #A82D63;
-  --housing-t: #E3EEFB; --food-t: #FDEBD3; --medical-t: #FBE1E4; --social-t: #DDF2EA; --spiritual-t: #ECE5F7; --heart-t: #FBE3EE;
+  --housing: #1F5FBF; --food: #A55A00; --medical: #B5162F; --social: #0B7A57; --prayer: #6B3FA0; --other: #4B5768;
+  --housing-t: #E3EEFB; --food-t: #FDEBD3; --medical-t: #FBE1E4; --social-t: #DDF2EA; --prayer-t: #ECE5F7; --other-t: #E9EDF2;
   --f-cond: "Barlow Condensed", "Noto Sans HK", system-ui, sans-serif;
   --f-body: "Barlow", "Noto Sans HK", system-ui, -apple-system, sans-serif;
   color-scheme: light;
@@ -45,7 +45,7 @@ svg { flex: none; }
 /* Category colour */
 .c-housing { --c: var(--housing); --ct: var(--housing-t); } .c-food { --c: var(--food); --ct: var(--food-t); }
 .c-medical { --c: var(--medical); --ct: var(--medical-t); } .c-social { --c: var(--social); --ct: var(--social-t); }
-.c-spiritual { --c: var(--spiritual); --ct: var(--spiritual-t); } .c-heart { --c: var(--heart); --ct: var(--heart-t); }
+.c-prayer { --c: var(--prayer); --ct: var(--prayer-t); } .c-other { --c: var(--other); --ct: var(--other-t); }
 .c- { --c: var(--muted); --ct: var(--soft); }
 .sq { background: var(--ct); color: var(--c); display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; }
 .sq svg { width: 26px; height: 26px; }
