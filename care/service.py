@@ -16,6 +16,7 @@ log = logging.getLogger("care")
 HISTORY_LIMIT = 30
 
 NEW_REQUEST_WORDS = {"new request", "新請求", "新请求"}
+RESET_WORDS = {"reset", "restart", "start over", "start again", "重新開始", "重新开始", "重來", "重来"}
 
 NEW_REQUEST_REPLY = {
     "en": "Sure, let's start a new one. Do you need some help, or is there something you'd like to offer?",
@@ -27,6 +28,12 @@ CONSENT_QUESTION = {
     "someone can get in touch? We won't share your name. Please reply YES or NO.",
     "zh": "我哋可唔可以將一段簡短描述同你嘅 WhatsApp 號碼分享俾附近教會嘅義工，等有人可以聯絡你？"
     "我哋唔會分享你嘅名。請回覆「可以」或「唔可以」。",
+}
+
+WELCOME_REPLY = {
+    "en": "Hi, welcome to Circle of Care. We're a group of churches in Hong Kong who help neighbours, both "
+    "ways. Do you need some help just now, or is there something you'd like to offer?",
+    "zh": "你好，歡迎嚟到關懷圈。我哋係香港一班教會，鄰舍之間互相幫助。你而家需要幫手，定係想提供幫助？",
 }
 
 FALLBACK_REPLY = {
@@ -50,9 +57,11 @@ def handle_incoming(channel: str, address: str, text: str) -> tuple[str, Convers
         conversation.save(update_fields=["language", "last_user_message_at"])
         Message.objects.create(conversation=conversation, role=Message.Role.USER, text=text)
 
-    if is_new_request(text):
+    if is_one_of(text, NEW_REQUEST_WORDS | RESET_WORDS):
+        # "reset" is a full fresh start with the welcome; "new request" keeps the chat going.
         conversation.start_new_request()
-        reply = _ask_consent_once(conversation, NEW_REQUEST_REPLY[language], language, crisis=False)
+        opening = WELCOME_REPLY if is_one_of(text, RESET_WORDS) else NEW_REQUEST_REPLY
+        reply = _ask_consent_once(conversation, opening[language], language, crisis=False)
         Message.objects.create(conversation=conversation, role=Message.Role.ASSISTANT, text=reply)
         return reply, conversation
 
@@ -94,8 +103,8 @@ def handle_incoming(channel: str, address: str, text: str) -> tuple[str, Convers
     return reply, conversation
 
 
-def is_new_request(text: str) -> bool:
-    return re.sub(r"[\W_]+", " ", text.lower()).strip() in NEW_REQUEST_WORDS
+def is_one_of(text: str, words: set[str]) -> bool:
+    return re.sub(r"[\W_]+", " ", text.lower()).strip() in words
 
 
 def _history(conversation):

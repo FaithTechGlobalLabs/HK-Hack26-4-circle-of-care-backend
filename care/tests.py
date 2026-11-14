@@ -515,3 +515,17 @@ def test_calm_message_after_a_crisis_scare_can_post(seeded, fake_agent):
     conversation = Conversation.objects.get(address="sim:joke")
     assert conversation.crisis_flagged  # still visible to coordinators in the admin
     assert CareRequest.objects.on_board().count() == 1
+
+
+@pytest.mark.parametrize("word", ["reset", "Restart!", "start over", "重新開始"])
+def test_reset_gives_a_fresh_start_with_the_welcome(seeded, fake_agent, word):
+    answers, respond = fake_agent
+    answers.append(make_result(crisis=True, consent="yes"))
+    service.handle_incoming("simulator", "sim:reset", "i have a baby to give away")
+    reply, conversation = service.handle_incoming("simulator", "sim:reset", word)
+
+    assert "Circle of Care" in reply or "關懷圈" in reply
+    assert reply.endswith(service.CONSENT_QUESTION[conversation.language])
+    assert conversation.current_request is None
+    assert conversation.consent == "unknown" and not conversation.crisis_flagged
+    assert len(respond.calls) == 1  # no AI call for the reset itself
