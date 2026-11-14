@@ -1,0 +1,125 @@
+{% extends "care/base.html" %}
+{% block title %}Try the bot · Circle of Care{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>Try the bot</h1>
+  <p class="muted">This runs the same code as the WhatsApp number. Write in English or Chinese.</p>
+</section>
+<div class="sim">
+  <div class="phone">
+    <div class="phone-head">{% include "care/_icon.html" with name="chat" %}<b>CIRCLE OF CARE 關懷圈</b></div>
+    <div class="chat" id="chat" aria-live="polite">
+      {% for m in history %}<div class="bubble {{ m.role }}">{{ m.text }}</div>{% endfor %}
+    </div>
+    <form class="composer" id="composer">
+      <label for="msg" class="visually-hidden" hidden>Message</label>
+      <input type="text" id="msg" name="msg" autocomplete="off" placeholder="Type a message" required>
+      <button class="btn small" type="submit" id="send">Send</button>
+    </form>
+  </div>
+
+  <div class="stack">
+    <div class="panel case stack" id="case">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <h2>Request record</h2>
+        <span class="status" id="case-status">{% if case %}{{ case.get_status_display }}{% else %}Nothing yet{% endif %}</span>
+      </div>
+      <dl>
+        <dt>Ref</dt><dd id="f-ref">{{ case.ref|default:"–" }}</dd>
+        <dt>Type</dt><dd id="f-kind">{{ case.get_kind_display|default:"–" }}</dd>
+        <dt>Category</dt><dd id="f-category">{{ case.get_category_display|default:"–" }}</dd>
+        <dt>District</dt><dd id="f-district">{{ case.district|default:"–" }}</dd>
+        <dt>Needs / offers</dt><dd id="f-needs">{{ case.need_labels|join:", "|default:"–" }}</dd>
+        <dt>Household</dt><dd id="f-household">{{ case.household_labels|join:", "|default:"–" }}</dd>
+        <dt>Urgency</dt><dd id="f-urgency">{{ case.get_urgency_display|default:"–" }}</dd>
+        <dt>Helpers</dt><dd id="f-helpers">{{ case.helpers_wanted|default:"–" }}</dd>
+        <dt>Free</dt><dd id="f-availability">{{ case.availability|default:"–" }}</dd>
+        <dt>Summary</dt><dd id="f-summary">{{ case.summary|default:"–" }}</dd>
+        <dt>Consent</dt><dd id="f-consent">{{ conversation.get_consent_display|default:"Not asked yet" }}</dd>
+      </dl>
+      <p class="muted" style="font-size:0.92rem">Shows on the board once the person agrees to share.</p>
+    </div>
+    <div class="panel stack">
+      <span class="label">Try one of these</span>
+      <div class="tries">
+        <button type="button">Hi, I just had a baby and my husband is back at work. Cooking every night is really hard.</button>
+        <button type="button">我媽媽82歲，自己住喺深水埗，我返工冇時間陪佢</button>
+        <button type="button">I lost my job last month and can't afford groceries for my kids</button>
+        <button type="button">我好攰，覺得好孤單</button>
+        <button type="button">Hello</button>
+        <button type="button">I'm a retired chef in Tsuen Wan and could cook for a family on weekends</button>
+      </div>
+      <form method="post" action="{% url 'simulator_reset' %}">{% csrf_token %}<button class="btn ghost small" type="submit">Start a new conversation</button></form>
+    </div>
+  </div>
+</div>
+{% csrf_token %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const chat = document.getElementById('chat');
+  const form = document.getElementById('composer');
+  const input = document.getElementById('msg');
+  const send = document.getElementById('send');
+  const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+  const set = (id, value) => { document.getElementById(id).textContent = value || '–'; };
+
+  function bubble(role, text) {
+    const div = document.createElement('div');
+    div.className = 'bubble ' + role;
+    div.textContent = text;
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+    return div;
+  }
+
+  function showCase(data) {
+    const status = document.getElementById('case-status');
+    set('f-consent', data.consent);
+    if (!data.case) return;
+    const c = data.case;
+    status.textContent = data.crisis ? 'Crisis flagged' : (c.on_board ? 'On the board' : c.status);
+    status.className = 'status' + (data.crisis ? ' crisis' : (c.on_board ? ' on' : ''));
+    set('f-ref', c.ref); set('f-kind', c.kind); set('f-availability', c.availability); set('f-category', c.category); set('f-district', c.district);
+    set('f-needs', c.needs.join(', ')); set('f-household', c.household.join(', '));
+    set('f-urgency', c.urgency); set('f-helpers', String(c.helpers_wanted)); set('f-summary', c.summary);
+  }
+
+  async function submit(text) {
+    bubble('user', text);
+    const typing = bubble('assistant typing', 'typing…');
+    send.disabled = true;
+    try {
+      const res = await fetch("{% url 'simulator_send' %}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+        body: JSON.stringify({ text })
+      });
+      const data = await res.json();
+      typing.remove();
+      if (!res.ok) { bubble('assistant', data.error || 'Something went wrong. Try again.'); return; }
+      bubble('assistant', data.reply);
+      showCase(data);
+    } catch (e) {
+      typing.remove();
+      bubble('assistant', 'Could not reach the server. Is runserver still running?');
+    } finally {
+      send.disabled = false;
+      input.focus();
+    }
+  }
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    submit(text);
+  });
+  document.querySelectorAll('.tries button').forEach((b) => b.addEventListener('click', () => submit(b.textContent)));
+  chat.scrollTop = chat.scrollHeight;
+})();
+</script>
+{% endblock %}

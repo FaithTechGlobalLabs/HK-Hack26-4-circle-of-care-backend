@@ -1,0 +1,27 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% block title %}Circle of Care{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700&family=Barlow+Condensed:wght@600;700;800&family=Noto+Sans+HK:wght@500;700&display=swap">
+  <link rel="stylesheet" href="{% static 'care/app.css' %}">
+</head>
+<body>
+  <div class="wrap {% block wrapclass %}{% endblock %}">
+    <header class="top">
+      <a class="brand" href="{% url 'home' %}"><b>CIRCLE OF CARE</b><span>關懷圈</span></a>
+      <nav class="nav" aria-label="Main">
+        {% with p=request.resolver_match.url_name %}
+        <a href="{% url 'simulator' %}" {% if p == 'simulator' %}aria-current="page"{% endif %}>Try the bot</a>
+        <a href="{% url 'board' %}" {% if p == 'board' or p == 'offerings' %}aria-current="page"{% endif %}>Board</a>
+        <a href="{% url 'admin:index' %}">Admin</a>
+        {% endwith %}
+      </nav>
+    </header>
+    {% block content %}{% endblock %}
+  </div>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

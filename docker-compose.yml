@@ -1,0 +1,16 @@
+name: neighbour
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: neighbour
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"  # 5434 so it runs beside Big Pet Pet (5433) and any local Postgres (5432)
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

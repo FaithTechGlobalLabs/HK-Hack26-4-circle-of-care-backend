@@ -1,0 +1,58 @@
+{% extends "care/base.html" %}
+{% block title %}{% if tab == "offer" %}Offers of help{% else %}Request board{% endif %} · Circle of Care{% endblock %}
+{% block wrapclass %}narrow{% endblock %}
+{% block content %}
+<nav class="tabs" aria-label="Board">
+  <a href="{% url 'board' %}" {% if tab == "need" %}aria-current="page"{% endif %}>Need help</a>
+  <a href="{% url 'offerings' %}" {% if tab == "offer" %}aria-current="page"{% endif %}>Offering help</a>
+</nav>
+<section class="hero">
+  {% if tab == "offer" %}
+  <h1>Who's offering to help</h1>
+  <p class="muted">People who messaged Circle of Care to offer their time and agreed to share it. Coordinators match them with requests.</p>
+  {% else %}
+  <h1>Who can you help this week?</h1>
+  <p class="muted">People asked for help on WhatsApp and agreed to share these summaries. Names and numbers stay private; a coordinator connects you.</p>
+  {% endif %}
+</section>
+
+{% for message in messages %}<p class="flash">{{ message }}</p>{% endfor %}
+
+<form class="filters" method="get">
+  <a class="chip" href="?{% if district %}district={{ district|urlencode }}{% endif %}" {% if not category %}aria-current="true"{% endif %}>All</a>
+  {% for value, label in categories %}
+    <a class="chip c-{{ value }}" href="?category={{ value }}{% if district %}&district={{ district|urlencode }}{% endif %}" {% if category == value %}aria-current="true"{% endif %}>{% include "care/_icon.html" with name=value %}{{ label }}</a>
+  {% endfor %}
+  {% if districts %}
+    {% if category %}<input type="hidden" name="category" value="{{ category }}">{% endif %}
+    <label class="visually-hidden" for="district" hidden>District</label>
+    <select id="district" name="district" onchange="this.form.submit()">
+      <option value="">All districts</option>
+      {% for d in districts %}<option value="{{ d }}" {% if d == district %}selected{% endif %}>{{ d }}</option>{% endfor %}
+    </select>
+  {% endif %}
+</form>
+
+<div class="list-head label"><span>{% if tab == "offer" %}Offer{% else %}Request{% endif %}</span><span>{% if tab == "need" %}Still needed{% endif %}</span></div>
+{% for req in posts %}
+  <article class="req c-{{ req.category }}">
+    <span class="sq">{% include "care/_icon.html" with name=req.category %}</span>
+    <div class="req-body">
+      <p class="req-text">{{ req.summary }}</p>
+      <p class="meta">{{ req.get_category_display|default:"General" }}{% if req.district %} · {{ req.district }}{% endif %} · {{ req.created_at|timesince }} ago · {{ req.ref }}</p>
+      <div class="tags">
+        {% if req.urgency == "high" %}<span class="tag urgent">Today or tomorrow</span>{% endif %}
+        {% for n in req.need_labels %}<span class="tag">{{ n }}</span>{% endfor %}
+        {% for h in req.household_labels %}<span class="tag">{{ h }}</span>{% endfor %}
+      </div>
+      {% if req.contact_phone %}<a class="contact" href="{{ req.contact_link }}" target="_blank" rel="noopener">{% include "care/_icon.html" with name="chat" %}WhatsApp {{ req.contact_phone }}</a>{% else %}<p class="meta">Contact through a coordinator</p>{% endif %}
+      {% if tab == "offer" %}
+        {% if req.availability %}<p class="meta">Free: {{ req.availability }}</p>{% endif %}
+      {% endif %}
+    </div>
+    {% if tab == "need" %}<div class="req-num"><b>{{ req.offers_still_needed }}</b><span>{% if req.helpers_wanted > 1 %}of {{ req.helpers_wanted }} helpers{% else %}helper{% endif %}</span></div>{% endif %}
+  </article>
+{% empty %}
+  <p class="empty">No {% if tab == "offer" %}offers{% else %}open requests{% endif %}{% if category or district %} for this filter{% endif %} right now. New ones appear here as soon as someone agrees to share.</p>
+{% endfor %}
+{% endblock %}

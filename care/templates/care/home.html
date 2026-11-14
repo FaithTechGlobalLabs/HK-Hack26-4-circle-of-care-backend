@@ -1,0 +1,24 @@
+{% extends "care/base.html" %}
+{% block content %}
+<section class="hero">
+  <h1>Ask for help on WhatsApp</h1>
+  <p class="muted">People message one WhatsApp number. The bot replies straight away with services that fit, and, if they agree, posts a short anonymous request for church volunteers.</p>
+</section>
+<div class="cards">
+  <a class="card" href="{% url 'simulator' %}">
+    <span class="sq c-social">{% include "care/_icon.html" with name="chat" %}</span>
+    <h2>Try the bot</h2>
+    <p class="muted">Chat with it in your browser, exactly as it answers on WhatsApp. See the request it builds as you go.</p>
+  </a>
+  <a class="card" href="{% url 'board' %}">
+    <span class="sq c-food">{% include "care/_icon.html" with name="hand" %}</span>
+    <h2>Request board</h2>
+    <p class="muted">What volunteers see: requests people agreed to share, with no names or numbers.</p>
+  </a>
+  <a class="card" href="{% url 'admin:index' %}">
+    <span class="sq c-housing">{% include "care/_icon.html" with name="housing" %}</span>
+    <h2>Admin</h2>
+    <p class="muted">Edit the resource list the bot recommends, read conversations, and connect helpers.</p>
+  </a>
+</div>
+{% endblock %}

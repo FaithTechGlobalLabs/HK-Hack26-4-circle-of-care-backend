@@ -1,0 +1,18 @@
+{% extends "care/base.html" %}
+{% block title %}Volunteer sign in · Circle of Care{% endblock %}
+{% block wrapclass %}narrow{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>Volunteers only</h1>
+  <p class="muted">Type the passcode your church coordinator gave you.</p>
+</section>
+<form method="post" class="stack panel">
+  {% csrf_token %}
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  <div>
+    <label for="passcode">Passcode</label>
+    <input type="password" id="passcode" name="passcode" required autofocus>
+  </div>
+  <button class="btn" type="submit">Open the board</button>
+</form>
+{% endblock %}

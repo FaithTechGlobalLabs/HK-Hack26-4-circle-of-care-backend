@@ -1,0 +1,33 @@
+[project]
+name = "circle-of-care"
+version = "0.1.0"
+description = "Circle of Care: a WhatsApp helper that connects people who need help with church volunteers who can offer it"
+requires-python = ">=3.12"
+dependencies = [
+    "django>=5.2,<6.0",
+    "anthropic>=0.80",
+    "openai>=1.50",
+    "psycopg[binary]>=3.2",
+    "twilio>=9.0",
+    "python-dotenv>=1.0",
+    "dj-database-url>=2.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-django>=4.9",
+    "ruff>=0.7",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "core.settings"
+python_files = ["test_*.py", "tests.py"]
