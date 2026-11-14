@@ -35,6 +35,7 @@
         <dt>Helpers</dt><dd id="f-helpers">{{ case.helpers_wanted|default:"–" }}</dd>
         <dt>Free</dt><dd id="f-availability">{{ case.availability|default:"–" }}</dd>
         <dt>Summary</dt><dd id="f-summary">{{ case.summary|default:"–" }}</dd>
+        <dt>Details</dt><dd id="f-details">{{ case.details|default:"–" }}</dd>
         <dt>Consent</dt><dd id="f-consent">{{ conversation.get_consent_display|default:"Not asked yet" }}</dd>
       </dl>
       <p class="muted" style="font-size:0.92rem">Shows on the board once the person agrees to share.</p>
@@ -84,7 +85,7 @@
     status.className = 'status' + (data.crisis ? ' crisis' : (c.on_board ? ' on' : ''));
     set('f-ref', c.ref); set('f-kind', c.kind); set('f-availability', c.availability); set('f-category', c.category); set('f-district', c.district);
     set('f-needs', c.needs.join(', ')); set('f-household', c.household.join(', '));
-    set('f-urgency', c.urgency); set('f-helpers', String(c.helpers_wanted)); set('f-summary', c.summary);
+    set('f-urgency', c.urgency); set('f-helpers', String(c.helpers_wanted)); set('f-summary', c.summary); set('f-details', c.details);
   }
 
   async function submit(text) {

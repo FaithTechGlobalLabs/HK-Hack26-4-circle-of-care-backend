@@ -118,6 +118,7 @@ def simulator_send(request):
             "urgency": case.get_urgency_display(),
             "helpers_wanted": case.helpers_wanted,
             "summary": case.summary,
+            "details": case.details,
             "on_board": case.shared and case.status == CareRequest.Status.OPEN,
         },
     })

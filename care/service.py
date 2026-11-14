@@ -109,6 +109,7 @@ def _case_snapshot(request: CareRequest | None) -> dict:
         "needs": request.needs,
         "household": request.household,
         "summary": request.summary,
+        "details": request.details,
         "helpers_wanted": request.helpers_wanted,
         "status": request.status,
     }
@@ -144,6 +145,7 @@ def _apply_result(conversation, request, result: agent.AgentResult, keyword_cris
         request.household = case["household"] if request.kind == CareRequest.Kind.NEED else []
         request.availability = case["availability"]
         request.summary = case["summary"]
+        request.details = case.get("details", "")
         request.helpers_wanted = min(max(case["helpers_wanted"], 1), 20)
 
         # Shown on the board only once the person has agreed to share and we know enough.

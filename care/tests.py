@@ -21,6 +21,7 @@ def make_result(**overrides):
         "needs": ["meals"],
         "household": ["new_baby"],
         "summary": "A mother in Tsuen Wan has a new baby and would like weekday dinners.",
+        "details": "",
         "helpers_wanted": 2,
         "ready": True,
     }
@@ -380,3 +381,75 @@ def test_posts_shared_before_the_new_promise_keep_number_hidden(open_request, cl
     row = client.get(reverse("api_requests")).json()["requests"][0]
     assert row["contact_phone"] == ""
     assert "Contact through a coordinator" in client.get(reverse("board")).content.decode()
+
+
+# ---------- post details ----------
+
+
+def test_details_are_saved_and_passed_back_to_the_ai(seeded, fake_agent):
+    answers, respond = fake_agent
+    details = "She had her second baby last week. Weekday dinners for two weeks would help. No pork, please."
+    answers.extend([make_result(case={"details": details}), make_result(consent="yes", case={"details": details})])
+
+    service.handle_incoming("simulator", "sim:det", "I just had a baby")
+    assert CareRequest.objects.get().details == details
+    service.handle_incoming("simulator", "sim:det", "yes")
+    assert respond.calls[1]["case"]["details"] == details
+
+
+def test_clean_result_handles_missing_and_oversized_details():
+    missing = agent.clean_result({"reply": "Hi", "case": {"category": "food"}})
+    assert missing.case["details"] == ""
+    huge = agent.clean_result({"reply": "Hi", "case": {"details": "x" * 5000}})
+    assert len(huge.case["details"]) == agent.DETAILS_LIMIT
+    odd = agent.clean_result({"reply": "Hi", "case": {"details": None}})
+    assert odd.case["details"] == ""
+
+
+def test_api_post_returns_a_need_with_details(open_request, client):
+    conversation = open_request.conversation
+    Message.objects.create(conversation=conversation, role="user", text="My secret story about dinners")
+    Message.objects.create(conversation=conversation, role="assistant", text="Thank you for telling me")
+    open_request.details = "A family of four needs dinners on weekdays."
+    open_request.save()
+
+    response = client.get(reverse("api_post", args=[open_request.pk]))
+    data = response.json()
+    assert response.status_code == 200
+    assert data["kind"] == "need" and data["ref"] == open_request.ref
+    assert data["details"] == "A family of four needs dinners on weekdays."
+    assert data["needs"] == ["Meals"] and data["status"] == "open" and data["language"] == "English"
+    assert data["message_count"] == 2 and data["started_at"] and data["last_message_at"]
+    assert data["contact_phone"] == "" and data["contact_link"] == ""  # contact not agreed
+    assert "secret story" not in response.content.decode()
+    assert "Thank you for telling me" not in response.content.decode()
+
+
+def test_api_post_returns_an_offer_with_contact_when_agreed(db, client):
+    conversation = Conversation.objects.create(
+        channel="whatsapp", address="whatsapp:+85291234567", consent="yes", language="zh"
+    )
+    post = CareRequest.objects.create(
+        conversation=conversation, kind="offer", category="food", district="Sha Tin", needs=["meals"],
+        availability="Weekends", summary="Can cook on weekends.", status="open", shared=True, share_contact=True,
+    )
+    data = client.get(reverse("api_post", args=[post.pk])).json()
+    assert data["kind"] == "offer" and data["ref"].startswith("O-")
+    assert data["availability"] == "Weekends" and data["language"] == "Cantonese"
+    assert data["contact_link"] == "https://wa.me/85291234567"
+    assert data["message_count"] == 0 and data["started_at"] is None
+
+
+def test_api_post_is_404_for_drafts_and_unknown_ids(db, client):
+    conversation = Conversation.objects.create(channel="simulator", address="sim:draft")
+    draft = CareRequest.objects.create(conversation=conversation, category="food", summary="Private", status="draft")
+    response = client.get(reverse("api_post", args=[draft.pk]))
+    assert response.status_code == 404 and "error" in response.json()
+    assert client.get(reverse("api_post", args=[9999])).status_code == 404
+
+
+def test_api_post_needs_passcode(open_request, client, settings):
+    settings.BOARD_PASSCODE = "grace"
+    url = reverse("api_post", args=[open_request.pk])
+    assert client.get(url).status_code == 401
+    assert client.get(url, headers={"X-Board-Passcode": "grace"}).status_code == 200

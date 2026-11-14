@@ -17,4 +17,5 @@ urlpatterns = [
     path("api/requests/<int:pk>/", api.request_detail, name="api_request"),
     path("api/requests/<int:pk>/offers/", api.create_offer, name="api_offers"),
     path("api/offerings/", api.offering_list, name="api_offerings"),
+    path("api/posts/<int:pk>/", api.post_detail, name="api_post"),
 ]

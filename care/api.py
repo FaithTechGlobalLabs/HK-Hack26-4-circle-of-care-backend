@@ -4,6 +4,7 @@ import json
 from functools import wraps
 
 from django.conf import settings
+from django.db.models import Count, Max, Min
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
@@ -74,6 +75,44 @@ def serialize(req: CareRequest) -> dict:
     }
 
 
+def serialize_post(post: CareRequest) -> dict:
+    """One board post of either kind, with the fuller write-up. Never the chat messages themselves."""
+    times = post.conversation.current_messages().aggregate(
+        count=Count("pk"), first=Min("created_at"), last=Max("created_at")
+    )
+    return {
+        "id": post.pk,
+        "ref": post.ref,
+        "kind": post.kind,
+        "kind_label": post.get_kind_display(),
+        "category": post.category,
+        "category_label": post.get_category_display() or "General",
+        "district": post.district,
+        "urgency": post.urgency,
+        "urgency_label": post.get_urgency_display(),
+        "status": post.status,
+        "status_label": post.get_status_display(),
+        "needs": post.need_labels(),
+        "household": post.household_labels(),
+        "availability": post.availability,
+        "summary": post.summary,
+        "details": post.details,
+        "helpers_wanted": post.helpers_wanted,
+        "contact_phone": post.contact_phone,
+        "contact_link": post.contact_link,
+        "language": "Cantonese" if post.conversation.language == "zh" else "English",
+        "message_count": times["count"],
+        "started_at": _iso(times["first"]),
+        "last_message_at": _iso(times["last"]),
+        "created_at": post.created_at.isoformat(),
+        "updated_at": post.updated_at.isoformat(),
+    }
+
+
+def _iso(value):
+    return value.isoformat() if value else None
+
+
 def _not_found():
     return JsonResponse({"error": "This request is no longer on the board."}, status=404)
 
@@ -99,6 +138,15 @@ def offering_list(request):
 def request_detail(request, pk):
     req = CareRequest.objects.on_board().needs_help().filter(pk=pk).first()
     return JsonResponse(serialize(req)) if req else _not_found()
+
+
+@require_GET
+@passcode_required
+def post_detail(request, pk):
+    post = CareRequest.objects.on_board().select_related("conversation").filter(pk=pk).first()
+    if not post:
+        return JsonResponse({"error": "This post is no longer on the board."}, status=404)
+    return JsonResponse(serialize_post(post))
 
 
 @csrf_exempt

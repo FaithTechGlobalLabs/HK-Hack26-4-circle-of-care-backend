@@ -146,6 +146,9 @@ class CareRequest(models.Model):
     availability = models.CharField(max_length=120, blank=True, help_text="For offers: when they're free.")
     household = models.JSONField(default=list, blank=True)
     summary = models.TextField(blank=True, help_text="Written by the AI with no names, phone numbers or addresses.")
+    details = models.TextField(
+        blank=True, help_text="A fuller anonymous write-up for volunteers, written by the AI. Same privacy rules as the summary."
+    )
     helpers_wanted = models.PositiveSmallIntegerField(default=1)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)
     shared = models.BooleanField(default=False, help_text="The person agreed to share this summary with volunteers.")
