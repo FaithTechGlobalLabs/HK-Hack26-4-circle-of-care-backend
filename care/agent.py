@@ -18,6 +18,7 @@ NEEDS = [value for value, _ in Need.choices]
 HOUSEHOLD = [value for value, _ in Household.choices]
 CATEGORIES = [value for value, _ in Category.choices] + ["unclear"]
 KINDS = ["need", "offer", "unclear"]
+DETAILS_LIMIT = 1500
 
 SYSTEM_PROMPT_TEMPLATE = """You are Circle of Care (關懷圈), a WhatsApp helper run by a group of churches in Hong Kong. \
 It works both ways. People message when life is hard: money is short, someone is ill, a new baby, loneliness, \
@@ -63,6 +64,9 @@ the catalog. You can say something like "I've added a couple of places below tha
 numbers, exact addresses or other details that could identify them. Examples: "A mother in Tsuen Wan has just \
 had her second baby and would like weekday dinners for two weeks while her husband is at work." / "A retired \
 chef in Tsuen Wan can cook dinners for a family on weekends."
+- details: a fuller write-up for volunteers and coordinators, 3 to 6 short sentences in English: the situation, \
+what would help and when, and anything practical to know (diet, stairs or mobility, language, timing, pets). \
+Same privacy rules as summary: no names, phone numbers, exact addresses. Use "" until you know enough.
 - helpers_wanted: for a need, how many volunteers it needs (usually 1; a meal rota might need 5 to 10); 1 for \
 an offer.
 - ready: true as soon as you know the kind, the category, the district and at least one item in needs. Do not \
@@ -85,7 +89,8 @@ kindly, and do not ask about sharing in that message.
 Answer with one JSON object and nothing else, shaped like this example:
 {"reply": "...", "language": "en", "resource_slugs": ["stfa"], "crisis": false, "consent": "unknown", \
 "case": {"kind": "need", "category": "food", "urgency": "normal", "district": "Tsuen Wan", "needs": ["meals"], \
-"household": ["new_baby"], "availability": "", "summary": "...", "helpers_wanted": 1, "ready": false}, \
+"household": ["new_baby"], "availability": "", "summary": "...", "details": "...", "helpers_wanted": 1, \
+"ready": false}, \
 "new_request": false}
 Allowed values: language en|zh; consent unknown|yes|no; case.kind need|offer|unclear; case.category \
 %(categories)s; case.urgency low|normal|high; case.needs any of %(needs)s; case.household any of %(household)s. \
@@ -123,12 +128,13 @@ RESPONSE_SCHEMA = {
                 "household": {"type": "array", "items": {"type": "string", "enum": HOUSEHOLD}},
                 "availability": {"type": "string"},
                 "summary": {"type": "string"},
+                "details": {"type": "string"},
                 "helpers_wanted": {"type": "integer"},
                 "ready": {"type": "boolean"},
             },
             "required": [
                 "kind", "category", "urgency", "district", "needs", "household", "availability", "summary",
-                "helpers_wanted", "ready",
+                "details", "helpers_wanted", "ready",
             ],
             "additionalProperties": False,
         },
@@ -232,6 +238,7 @@ def clean_result(data: dict, fallback_language: str = "en") -> AgentResult:
             "household": pick_list(case.get("household"), HOUSEHOLD),
             "availability": str(case.get("availability") or "")[:120],
             "summary": str(case.get("summary") or ""),
+            "details": str(case.get("details") or "").strip()[:DETAILS_LIMIT],
             "helpers_wanted": min(max(helpers, 1), 20),
             "ready": case.get("ready") is True,
         },
